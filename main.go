@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/glassonion1/logz"
+	"github.com/glassonion1/logz/middleware"
 	"github.com/hytkgami/log-group-sample-go/controllers"
 	"golang.org/x/sync/errgroup"
 )
@@ -26,12 +28,24 @@ func run(ctx context.Context) error {
 	if port == "" {
 		port = "8080"
 	}
-	router := http.NewServeMux()
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	if projectID == "" {
+		log.Fatal("GOOGLE_CLOUD_PROJECT is not set")
+	}
+	mux := http.NewServeMux()
+
 	healthCheckController := controllers.NewHealthCheckController()
-	router.HandleFunc("/ping", healthCheckController.Ping)
+	mux.HandleFunc("/ping", healthCheckController.Ping)
+
+	logz.SetConfig(logz.Config{
+		ProjectID:      projectID,
+		NeedsAccessLog: false, // if you use GKE, then put true
+	})
+	logz.InitTracer()
+	h := middleware.NetHTTP("tracer")(mux)
 	s := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
-		Handler: router,
+		Handler: h,
 	}
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
