@@ -1,0 +1,13 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: app
+spec:
+  template:
+    spec:
+      containerConcurrency: 0
+      containers:
+      - image: ko://github.com/hytkgami/log-group-sample-go
+        env:
+          - name: GOOGLE_CLOUD_PROJECT
+            value: $GOOGLE_CLOUD_PROJECT

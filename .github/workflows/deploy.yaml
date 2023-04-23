@@ -1,0 +1,39 @@
+name: Publish
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  publish:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          workload_identity_provider: ${{secrets.WORKLOAD_IDENTITY_PROVIDER}}
+          service_account: ${{secrets.DEPLOY_SERVICE_ACCOUNT_NAME}}
+      - uses: 'google-github-actions/setup-gcloud@v1'
+      - name: Configure docker to use the gcloud cli
+        run: gcloud auth configure-docker --quiet
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+      - uses: ko-build/setup-ko@v0.6
+      - name: Put variables
+        run: envsubst < deploy/service.yml.template > deploy/service.yml
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{secrets.GOOGLE_CLOUD_PROJECT}}
+      - name: Deploy
+        run: |
+          ko resolve -f deploy/service.yml | gcloud run services replace - \
+            --region=${{vars.GCP_REGION}} \
+            --project=${{secrets.GOOGLE_CLOUD_PROJECT}}
+        env:
+          KO_DOCKER_REPO: asia.gcr.io/${{secrets.GOOGLE_CLOUD_PROJECT}}/app
+          GOOGLE_CLOUD_PROJECT: ${{secrets.GOOGLE_CLOUD_PROJECT}}
