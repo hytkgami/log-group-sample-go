@@ -19,6 +19,7 @@ func TestHealthCheck(t *testing.T) {
 
 	port := "10080"
 	t.Setenv("PORT", port)
+	t.Setenv("GOOGLE_CLOUD_PROJECT", "test-project")
 
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%s/ping", port))
 	if err != nil {
